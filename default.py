@@ -19,6 +19,7 @@ addon_version = addon.getAddonInfo('version')
 addon_id = addon.getAddonInfo('id')
 icon = addon.getAddonInfo('icon')
 language = addon.getLocalizedString
+latest_videos_href = 'http://feeds2.feedburner.com/cnet/allhdpodcast'
 
 
 def addon_log(string):
@@ -56,9 +57,9 @@ def cache_categories():
     url = 'http://www.cnet.com/cnet-podcasts/'
     soup = BeautifulSoup(make_request(url), 'html.parser')
     items = soup.find_all('a', attrs={'href': re.compile("hd.xml$")} )
-    cats = [{'thumb': i['href'],
+    cats = [{'thumb': '',
              'name': i['href'],
-             'desc': i['href'],
+             'desc': '',
              'links': i['href']} for
              i in items]
     return cats
@@ -66,6 +67,12 @@ def cache_categories():
 
 def display_categories():
     cats = cache.cacheFunction(cache_categories)
+    previous_name = ''
+    
+    #add a category
+    name = 'Latest Videos'
+    add_dir(name, latest_videos_href, 'category', '', {'Plot': ''})
+    
     for i in cats:
         name = str(i['name'])
         name = name.replace("http://feed.cnet.com/feed/podcast/", "")
@@ -73,56 +80,77 @@ def display_categories():
         name = name.replace("/", " ")
         name = name.replace("hd.xml", "")
         name = name.capitalize()
-        add_dir(name, i['links'], 'category', i['thumb'], {'Plot': i['desc']})
+        
+        #skip name if it is the same as the previous name
+        if name == previous_name: 
+            pass
+        else:
+            previous_name = name
+            add_dir(name, i['links'], 'category', i['thumb'], {'Plot': i['desc']})
 
 
 def display_category(links_list):
     url = links_list
-    #     <item>
-    #           <title><![CDATA[Inside Scoop: Will acquiring Nokia devices give Microsoft an edge?]]></title>
-    #           <link>http://www.podtrac.com/pts/redirect.mp4/dw.cbsi.com/redir/13n0903_MicrosoftScoop_740.m4v?destUrl=http://download.cnettv.com.edgesuite.net/21923/2013/09/03/13n0903_MicrosoftScoop_740.m4v</link>
-    #           <author>feedback-cnettv@cnet.com (CNETTV)</author>
-    #           <description><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></description>
-    #           <itunes:subtitle><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></itunes:subtitle>
-    #           <itunes:summary><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></itunes:summary>
-    #           <itunes:explicit>no</itunes:explicit>
-    #           <itunes:author>CNET.com</itunes:author>
-    #           <guid isPermaLink="false">35ffbba2-67e4-11e3-a665-14feb5ca9861</guid>
-    #           <itunes:duration></itunes:duration>
-    #           <itunes:keywords>
-    #               CNET
-    #                CNETTV
-    #             Tech Industry
-    #           </itunes:keywords>
-    #           <enclosure url="http://www.podtrac.com/pts/redirect.mp4/dw.cbsi.com/redir/13n0903_MicrosoftScoop_740.m4v?destUrl=http://download.cnettv.com.edgesuite.net/21923/2013/09/03/13n0903_MicrosoftScoop_740.m4v" length="0" type="video/mp4"/>
-    #           <category>Technology</category>
-    #           <pubDate>Fri, 21 Feb 2014 19:49:08 PST</pubDate>
-    #     </item>
+
     soup = BeautifulSoup(make_request(url), 'html.parser')
-    urls = soup.find_all('enclosure', attrs={'url': re.compile("^http")} )
 
-    #skip 2 titles
-    title_index = 2
-   
-    for url in urls:
-        titles = soup.find_all('title')
-        title = str(titles[title_index])
-        title_index = title_index + 1
-        title = title.replace("<title><![CDATA[", "")
-        title = title.replace("]]></title>", "")
-        title = title.replace("&#039;","'")
-        
-#         meta = {'Plot': title,
-#                'Duration': 0,
-#                'Date': '01-01-1900',
-#                'Premiered': ''}
-        
-        meta = {'Plot': title,
-               'Duration': '',
-               'Date': '',
-               'Premiered': ''}
+    #latest videos isn't a real category in CNET, therefore this hardcoded stuff was needed
+    if url == latest_videos_href:
+        urls = soup.find_all('a', attrs={'href': re.compile("^http://feedproxy.google.com/")})
+        #<a href="http://feedproxy.google.com/~r/cnet/allhdpodcast/~3/4RHUa95GiUM/14n041814_walkingpalua_740.mp4">A walk among hidden graves and WWII bombs</a>
+        for url in urls:
+            title = str(url)
+            title = title.replace('</a>','')
+            title = title.replace("&#039;","'")
+            pos_last_greater_than_sign = title.rfind('>')
+            title = title[pos_last_greater_than_sign + 1:]
+            
+            meta = {'Plot': title,
+                    'Duration': '',
+                    'Date': '',
+                    'Premiered': ''}
+             
+            add_dir(title, url['href'], 'resolve', 'Defaultvideo.png', meta, False)
+    else:
+        #     <item>
+        #           <title><![CDATA[Inside Scoop: Will acquiring Nokia devices give Microsoft an edge?]]></title>
+        #           <link>http://www.podtrac.com/pts/redirect.mp4/dw.cbsi.com/redir/13n0903_MicrosoftScoop_740.m4v?destUrl=http://download.cnettv.com.edgesuite.net/21923/2013/09/03/13n0903_MicrosoftScoop_740.m4v</link>
+        #           <author>feedback-cnettv@cnet.com (CNETTV)</author>
+        #           <description><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></description>
+        #           <itunes:subtitle><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></itunes:subtitle>
+        #           <itunes:summary><![CDATA[Details of the Microsoft and Nokia deal are now finalized. CNET's Josh Lowensohn discusses the effects the merger could have on customers, Microsoft's sagging market share, and the selection of a new Microsoft CEO.]]></itunes:summary>
+        #           <itunes:explicit>no</itunes:explicit>
+        #           <itunes:author>CNET.com</itunes:author>
+        #           <guid isPermaLink="false">35ffbba2-67e4-11e3-a665-14feb5ca9861</guid>
+        #           <itunes:duration></itunes:duration>
+        #           <itunes:keywords>
+        #               CNET
+        #                CNETTV
+        #             Tech Industry
+        #           </itunes:keywords>
+        #           <enclosure url="http://www.podtrac.com/pts/redirect.mp4/dw.cbsi.com/redir/13n0903_MicrosoftScoop_740.m4v?destUrl=http://download.cnettv.com.edgesuite.net/21923/2013/09/03/13n0903_MicrosoftScoop_740.m4v" length="0" type="video/mp4"/>
+        #           <category>Technology</category>
+        #           <pubDate>Fri, 21 Feb 2014 19:49:08 PST</pubDate>
+        #     </item>
+        urls = soup.find_all('enclosure', attrs={'url': re.compile("^http")} )
+     
+        #skip 2 titles
+        title_index = 2
 
-        add_dir(title, url['url'], 'resolve', 'Defaultvideo.png', meta, False)
+        for url in urls:
+            titles = soup.find_all('title')
+            title = str(titles[title_index])
+            title_index = title_index + 1
+            title = title.replace("<title><![CDATA[", "")
+            title = title.replace("]]></title>", "")
+            title = title.replace("&#039;","'")
+
+            meta = {'Plot': title,
+                    'Duration': '',
+                    'Date': '',
+                    'Premiered': ''}
+        
+            add_dir(title, url['url'], 'resolve', 'Defaultvideo.png', meta, False)
 
 def resolve_url(video_id):
     params = {
