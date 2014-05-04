@@ -1,6 +1,7 @@
-version 1.1.1
+version 1.1.1 (Sunday, 20 april 2014)
 fix to get the addon working again after changes in the website. 
 I couldn't get in contact with divingmule, therefore i (Skipmode A1) made a new version of the addon based on divingmule's sourcecode.  
+Thanks to gtoons for the feedburner tip.
 
 version 1.1.0
 update for frodo/gotham
