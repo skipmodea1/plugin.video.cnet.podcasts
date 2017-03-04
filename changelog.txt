@@ -1,3 +1,7 @@
+v1.1.4-SNAPSHOT (2017-03-04)
+reformatted changelog
+removed strings.xml
+
 v1.1.3 (2017-03-03)
 using po-files
 fixed url in addon.xml as per request
@@ -10,7 +14,7 @@ added fanart-blurred
 
 v1.1.1 (2014-04-20)
 fix to get the addon working again after changes in the website. 
-I couldn't get in contact with divingmule, therefore i (Skipmode A1) made a new of the addon based on divingmule's sourcecode.  
+I couldn't get in contact with divingmule, therefore i (Skipmode A1) made a new of the addon based on divingmule's sourcecode. 
 Thanks to gtoons for the feedburner tip.
 
 v1.1.0
