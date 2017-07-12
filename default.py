@@ -9,29 +9,22 @@ import urllib2
 import xbmcaddon
 import xbmcgui
 import xbmcplugin
-import xmltodict
+import xbmc
+import sys
 from bs4 import BeautifulSoup
 from urlparse import parse_qs
 
-cache = StorageServer.StorageServer("cnetpodcasts", 6)
-addon = xbmcaddon.Addon()
-addon_version = addon.getAddonInfo('version')
-addon_id = addon.getAddonInfo('id')
-icon = addon.getAddonInfo('icon')
-language = addon.getLocalizedString
-latest_videos_href = 'http://feeds2.feedburner.com/cnet/allhdpodcast'
-
-
-def addon_log(string):
-    try:
-        log_message = string.encode('utf-8', 'ignore')
-    except:
-        log_message = 'addonException: addon_log'
-    xbmc.log("[%s-%s]: %s" % (addon_id, addon_version, log_message), level=xbmc.LOGDEBUG)
+ADDON = "plugin.video.cnet.podcasts"
+SETTINGS = xbmcaddon.Addon(id=ADDON)
+LANGUAGE = SETTINGS.getLocalizedString
+IMAGES_PATH = os.path.join(xbmcaddon.Addon(id=ADDON).getAddonInfo('path'), 'resources', 'images')
+CACHE = StorageServer.StorageServer("cnetpodcasts", 6)
+LATEST_VIDEOS_HREF = 'http://feeds2.feedburner.com/cnet/allhdpodcast'
+DATE = "2017-07-12"
+VERSION = "1.0.4"
 
 
 def make_request(url, post_data=None):
-    addon_log('Request URL: %s' % url)
     headers = {
         'User-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0',
         'Referer': 'http://www.cnet.com'
@@ -43,16 +36,12 @@ def make_request(url, post_data=None):
         response.close()
         return data
     except urllib2.URLError, e:
-        addon_log('We failed to open "%s".' % url)
-        if hasattr(e, 'reason'):
-            addon_log('We failed to reach a server.')
-            addon_log('Reason: %s' % e.reason)
-        if hasattr(e, 'code'):
-            addon_log('We failed with error code - %s.' % e.code)
-
+        xbmc.log("[ADDON] %s v%s (%s) debug mode, %s = %s" % (
+            ADDON, VERSION, DATE, "HTTPError", str(e)), xbmc.LOGDEBUG)
+        xbmcgui.Dialog().ok(LANGUAGE(30000), LANGUAGE(30106) % (str(e)))
+        exit(1)
 
 def cache_categories():
-    # url = 'http://www.cnet.com/podcasts/'
     url = 'http://www.cnet.com/cnet-podcasts/'
     soup = BeautifulSoup(make_request(url), 'html.parser')
     items = soup.find_all('a', attrs={'href': re.compile("hd.xml$")})
@@ -65,14 +54,18 @@ def cache_categories():
 
 
 def display_categories():
-    cats = cache.cacheFunction(cache_categories)
+    cats = CACHE.cacheFunction(cache_categories)
     previous_name = ''
 
     # add a category
     name = 'Latest Videos'
-    add_dir(name, latest_videos_href, 'category', '', {'Plot': ''})
+    add_dir(name, LATEST_VIDEOS_HREF, 'category', '', {'Plot': ''})
 
     for i in cats:
+
+        xbmc.log("[ADDON] %s v%s (%s) debug mode, %s = %s" % (
+            ADDON, VERSION, DATE, "cat", str(i)), xbmc.LOGDEBUG)
+
         name = str(i['name'])
         name = name.replace("http://feed.cnet.com/feed/podcast/", "")
         name = name.replace("-", " ")
@@ -94,7 +87,7 @@ def display_category(links_list):
     soup = BeautifulSoup(make_request(url), 'html.parser')
 
     # latest videos isn't a real category in CNET, therefore this hardcoded stuff was needed
-    if url == latest_videos_href:
+    if url == LATEST_VIDEOS_HREF:
         urls = soup.find_all('a', attrs={'href': re.compile("^http://feedproxy.google.com/")})
         # <a href="http://feedproxy.google.com/~r/cnet/allhdpodcast/~3/4RHUa95GiUM/14n041814_walkingpalua_740.mp4">A walk among hidden graves and WWII bombs</a>
         for url in urls:
@@ -108,6 +101,9 @@ def display_category(links_list):
                     'Duration': '',
                     'Date': '',
                     'Premiered': ''}
+
+            xbmc.log("[ADDON] %s v%s (%s) debug mode, %s = %s" % (
+                ADDON, VERSION, DATE, "url", str(url)), xbmc.LOGDEBUG)
 
             add_dir(title, url['href'], 'resolve', 'Defaultvideo.png', meta, False)
     else:
@@ -144,34 +140,23 @@ def display_category(links_list):
             title = title.replace("]]></title>", "")
             title = title.replace("&#039;", "'")
 
-            meta = {'Plot': title,
-                    'Duration': '',
-                    'Date': '',
-                    'Premiered': ''}
+            meta = {'plot': title,
+                    'duration': '',
+                    'year': '',
+                    'dateadded': ''}
 
             add_dir(title, url['url'], 'resolve', 'Defaultvideo.png', meta, False)
 
 
-def resolve_url(video_id):
-    parameters = {
-        'iod': 'images,videoMedia,relatedLink,breadcrumb,relatedAssets,broadcast,lowcache',
-        'partTag': 'cntv',
-        'players': 'Download,RTMP',
-        'showBroadcast': 'true',
-        'videoIds': video_id,
-        'videoMediaType': 'preferred'
-    }
-    data = make_request('http://api.cnet.com/restApi/v1.0/videoSearch?' + urllib.urlencode(parameters))
-    pod_dict = xmltodict.parse(data)
-    media_item = pod_dict['CNETResponse']['Videos']['Video']
-    # thumb = [i['ImageURL'] for i in media_item['Images']['Image'] if i['@width'] == '360'][0]
-    media_items = media_item['VideoMedias']['VideoMedia']
-    stream_urls = [i['DeliveryUrl'] for i in media_items if i['Height'] == '720']
-    if stream_urls:
-        return stream_urls[0]
-
-
 def add_dir(name, url, modus, iconimage, meta=None, isfolder=True):
+    add_sort_methods()
+
+    context_menu_items = []
+    # Add refresh option to context menu
+    context_menu_items.append((LANGUAGE(30104), 'Container.Refresh'))
+    # Add episode  info to context menu
+    context_menu_items.append((LANGUAGE(30105), 'XBMC.Action(Info)'))
+
     if meta is None:
         meta = {}
     parameters = {'name': name, 'url': url, 'mode': modus}
@@ -181,12 +166,19 @@ def add_dir(name, url, modus, iconimage, meta=None, isfolder=True):
         list_item.setProperty('IsPlayable', 'false')
     else:
         list_item.setProperty('IsPlayable', 'true')
-    ADDON = "plugin.video.cnet.podcasts"
-    IMAGES_PATH = os.path.join(xbmcaddon.Addon(id=ADDON).getAddonInfo('path'), 'resources', 'images')
     list_item.setProperty('Fanart_Image', os.path.join(IMAGES_PATH, 'fanart-blur.jpg'))
-    # Add refresh option to context menu
-    list_item.addContextMenuItems([('Refresh', 'Container.Refresh')])
+    list_item.setInfo("mediatype", "video")
+    list_item.setInfo("video", meta)
+    # Adding context menu items to context menu
+    list_item.addContextMenuItems(context_menu_items, replaceItems=False)
+    # Add our item to directory
     xbmcplugin.addDirectoryItem(int(sys.argv[1]), url, list_item, isfolder)
+
+
+def add_sort_methods():
+    sort_methods = [xbmcplugin.SORT_METHOD_UNSORTED,xbmcplugin.SORT_METHOD_LABEL,xbmcplugin.SORT_METHOD_DATE,xbmcplugin.SORT_METHOD_DURATION,xbmcplugin.SORT_METHOD_EPISODE]
+    for method in sort_methods:
+        xbmcplugin.addSortMethod(int(sys.argv[1]), sortMethod=method)
 
 
 def get_params():
@@ -205,11 +197,10 @@ def set_view_mode():
         '4': '503',
         '5': '515'
     }
-    view_mode = addon.getSetting('view_mode')
+    view_mode = SETTINGS.getSetting('view_mode')
     if view_mode == '6':
         return
     xbmc.executebuiltin('Container.SetViewMode(%s)' % view_modes[view_mode])
-
 
 params = get_params()
 
@@ -217,8 +208,11 @@ try:
     mode = params['mode']
 except:
     mode = None
+    xbmc.log("[ADDON] %s v%s (%s) debug mode, %s = %s, %s = %s" % (
+        ADDON, VERSION, DATE, "ARGV", repr(sys.argv), "File", str(__file__)), xbmc.LOGDEBUG)
 
-addon_log(repr(params))
+xbmc.log("[ADDON] %s v%s (%s) debug mode, %s = %s" % (
+    ADDON, VERSION, DATE, "params", str(params)), xbmc.LOGDEBUG)
 
 if not mode:
     display_categories()
