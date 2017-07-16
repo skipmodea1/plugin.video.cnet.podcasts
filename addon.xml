@@ -21,7 +21,7 @@
     <platform>all</platform>
     <license>GNU GENERAL PUBLIC LICENSE. Version 3, June 2007</license>
     <forum>http://forum.xbmc.org/showthread.php?tid=192868</forum>
-    <website>http://www.cnet.com/cnet-podcasts/</website>
+    <website>http://www.cnet.com/cnet-podcasts</website>
     <email></email>
     <source>https://github.com/skipmodea1/plugin.video.cnet.podcasts</source>
   </extension>
