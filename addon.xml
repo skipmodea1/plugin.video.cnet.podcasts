@@ -25,5 +25,6 @@
     <website>http://www.cnet.com/cnet-podcasts</website>
     <email></email>
     <source>https://github.com/skipmodea1/plugin.video.cnet.podcasts</source>
+    <python3>true</python3>
   </extension>
 </addon>
