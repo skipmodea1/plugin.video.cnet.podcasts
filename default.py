@@ -23,8 +23,8 @@ LANGUAGE = SETTINGS.getLocalizedString
 IMAGES_PATH = os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources', 'images')
 HEADERS = {'User-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0','Referer': 'http://www.cnet.com'}
 BASE_URL = 'http://www.cnet.com/cnet-podcasts/'
-DATE = "2017-12-27"
-VERSION = "1.1.6-SNAPSHOT"
+DATE = "2018-01-20"
+VERSION = "1.1.6"
 
 
 def cache_categories():
