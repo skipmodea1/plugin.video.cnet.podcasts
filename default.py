@@ -65,7 +65,15 @@ def display_categories():
             pass
         else:
             previous_name = name
-            add_dir(name, i['links'], 'category', i['thumb'], {'Plot': i['desc']})
+            if SETTINGS.getSetting('onlyshowallcategory') == 'true':
+                if 'All' in str(name):
+                    display_category(str(i['name']))
+                    xbmcplugin.setContent(int(sys.argv[1]), 'episodes')
+                    set_view_mode()
+                    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+                    break
+            else:
+                add_dir(name, i['links'], 'category', i['thumb'], {'Plot': i['desc']})
 
 
 def display_category(links_list):
